@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # 带详细解释的站点性能检测脚本（含自检功能）
-# 用法: ./check_site.sh <URL>
+# 用法: sitecheck [OPTIONS] <URL>
 
 # ===== 自检依赖命令 =====
 REQUIRED_CMDS=(ping curl bc awk)
-# httping 可选
 OPTIONAL_CMDS=(httping)
 MISSING_REQUIRED=()
 for cmd in "${REQUIRED_CMDS[@]}"; do
@@ -21,9 +20,37 @@ fi
 
 # 检查 httping，可选提示
 if ! command -v httping &>/dev/null; then
-  echo "警告：未安装 httping，将跳过 HTTPS 延迟测试。"  
+  echo "警告：未安装 httping，将跳过 HTTPS 延迟测试。"
   echo "如需安装：httping，可执行 'brew install httping'"
 fi
+
+# ==== 处理帮助/版本/开关选项 ====
+case "$1" in
+  -h|--help)
+    cat <<'EOF'
+Usage: sitecheck [OPTIONS] <URL>
+
+Options:
+  -h, --help       显示本帮助信息
+  -v, --version    显示版本号
+  --no-httping     跳过 HTTPS 延迟测试
+
+Example:
+  sitecheck example.com
+  sitecheck -v
+  sitecheck --no-httping example.com
+EOF
+    exit 0
+    ;;
+  -v|--version)
+    echo "sitecheck version 0.1.2"
+    exit 0
+    ;;
+  --no-httping)
+    NO_HTTPING=1
+    shift
+    ;;
+esac
 
 # ===== 开始性能检测 =====
 URL="$1"
@@ -47,14 +74,14 @@ HOST=${HOST%%/*}
 echo "→ 解析到主机：$HOST"
 PING_RAW=$(ping -c 3 "$HOST" 2>&1)
 echo "$PING_RAW"
-LOSS=$(echo "$PING_RAW" | awk -F", " '/packet loss/ {print $3}' | awk '{print $1}' | tr -d '%')
+LOSS=$(echo "$PING_RAW" | awk -F", " '/packet loss/ {print $3+0}')
 RTT_LINE=$(echo "$PING_RAW" | awk -F" = " '/min\/avg\/max\/stddev/ {print $2}')
 MIN_RTT=$(echo "$RTT_LINE" | cut -d'/' -f1)
 AVG_RTT=$(echo "$RTT_LINE" | cut -d'/' -f2)
 MAX_RTT=$(echo "$RTT_LINE" | cut -d'/' -f3)
 STDDEV_RTT=$(echo "$RTT_LINE" | cut -d'/' -f4)
 echo "-- 解释："
-if (( $(echo "$LOSS > 0" | bc -l) )); then
+if [ "$LOSS" -gt 0 ] 2>/dev/null; then
   echo "   • 丢包率 ${LOSS}%：存在丢包，可能网络质量不佳或防火墙丢弃 ICMP。"
 else
   echo "   • 丢包率 0%：网络通畅，无 ICMP 丢包。"
@@ -62,9 +89,10 @@ fi
 if [ -z "$RTT_LINE" ]; then
   echo "   • 无 RTT 数据，可能所有包均丢失。"
 else
-  if (( $(echo "$AVG_RTT > 200" | bc -l) )); then
+  AVG_INT=${AVG_RTT%.*}
+  if [ "$AVG_INT" -gt 200 ] 2>/dev/null; then
     PERF_DESC="响应较慢"
-  elif (( $(echo "$AVG_RTT > 100" | bc -l) )); then
+  elif [ "$AVG_INT" -gt 100 ] 2>/dev/null; then
     PERF_DESC="延迟适中"
   else
     PERF_DESC="延迟很低，网络性能优秀"
@@ -94,7 +122,6 @@ DNS=$(echo "$CURL_STATS" | awk -F"DNS:" '{print $2}' | awk '{print $1}')
 CONNECT=$(echo "$CURL_STATS" | awk -F"Connect:" '{print $2}' | awk '{print $1}')
 START=$(echo "$CURL_STATS" | awk -F"StartTransfer:" '{print $2}' | awk '{print $1}')
 TOTAL=$(echo "$CURL_STATS" | awk -F"Total:" '{print $2}' | awk '{print $1}')
-
 echo "   • DNS 解析：${DNS}s（正常 <0.1s）"
 echo "   • TCP+TLS 握手：${CONNECT}s（正常 <0.05s）"
 echo "   • 首字节时间：${START}s（服务器处理+网络，越低越好）"
@@ -102,13 +129,15 @@ echo "   • 总耗时：${TOTAL}s（整体请求延迟）"
 
 # 4) httping 延迟
 echo -e "\n4) httping 延迟"
-if command -v httping &>/dev/null; then
+if [ -z "$NO_HTTPING" ] && command -v httping &>/dev/null; then
   echo "→ 使用 httping 跳过 SSL 验证（-k）并测试延迟"
   HTTPING_RAW=$(httping -G -k -c 3 "$URL" 2>&1)
   echo "$HTTPING_RAW"
   echo "-- 解释："
   HTTPING_AVG=$(echo "$HTTPING_RAW" | awk -F"min/avg/max = " '{print $2}' | cut -d'/' -f2)
   echo "   • httping 平均延迟 ${HTTPING_AVG} ms：衡量 HTTPS 握手及首字节延迟。（已跳过证书验证）"
+elif [ -n "$NO_HTTPING" ]; then
+  echo "   • 跳过 httping 延迟测试（--no-httping）"
 else
   echo "   • 未安装 httping，跳过此项。（可用 'brew install httping' 安装）"
 fi
