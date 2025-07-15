@@ -128,7 +128,8 @@ while [[ $# -gt 0 ]]; do
       cat <<'EOF'
 Usage: sitecheck [OPTIONS] <URL>
 
-Options:
+Commands:
+  detection              探测站点信息（重定向/IP/主机/服务器/CMS/X‑Powered‑By）
   -h, --help             显示帮助信息
   -v, --version          显示版本号
   --no-httping           跳过 HTTPS 延迟测试
@@ -140,6 +141,7 @@ Options:
 
 Examples:
   sitecheck example.com
+  sitecheck detection example.com
   sitecheck -c 5 -t 5 --warn-loss 20 --warn-latency 300 --format json example.com
 EOF
       exit 0
