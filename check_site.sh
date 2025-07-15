@@ -43,7 +43,7 @@ EOF
     exit 0
     ;;
   -v|--version)
-    echo "sitecheck version 0.1.2"
+    echo "sitecheck version 0.1.3"
     exit 0
     ;;
   --no-httping)
