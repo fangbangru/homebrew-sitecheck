@@ -1,7 +1,71 @@
-#!/usr/bin/env bash
-# -*- coding: utf-8 -*-
-# sitecheck — 可定制参数、阈值告警、彩色输出、JSON/CSV 输出的站点性能检测脚本
-#
+set -uo pipefail
+
+VERSION="0.1.7"
+
+GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+
+site_info() {
+  local URL="$1"
+  [[ ! "$URL" =~ ^https?:// ]] && URL="https://$URL"
+  local HOST=${URL#https://}; HOST=${HOST#http://}; HOST=${HOST%%/*}
+
+  local REDIR
+  REDIR=$(curl -s -o /dev/null -w '%{redirect_url}' -L "$URL")
+  REDIR=${REDIR:-$URL}
+
+  local IP
+  IP=$(dig +short A "$HOST" | head -n1)
+  IP=${IP:-Unknown}
+
+  local ORG
+  ORG=$(whois "$IP" 2>/dev/null \
+    | grep -E '^(Org(Name|anization)|Registrant Organization):' \
+    | head -n1 \
+    | cut -d: -f2- \
+    | sed 's/^ *//')
+  ORG=${ORG:-Unknown}
+
+  local SERVER
+  SERVER=$(curl -s -I -L "$URL" \
+    | grep -i '^Server:' \
+    | head -n1 \
+    | cut -d' ' -f2-)
+  SERVER=${SERVER:-Unknown}
+
+  local GEN
+  GEN=$(curl -s "$URL" \
+    | grep -i '<meta[^>]*name=["'"'"']generator["'"'"']' \
+    | head -n1 \
+    | sed -E 's/.*content=["'"'"']([^"'"'"']+).*/\1/')
+  GEN=${GEN:-Unknown}
+
+  local XPBY
+  XPBY=$(curl -s -I "$URL" \
+    | grep -i '^X-Powered-By:' \
+    | head -n1 \
+    | cut -d' ' -f2-)
+  XPBY=${XPBY:-Unknown}
+
+  cat <<EOF
+Redirects to: $REDIR
+IP address:    $IP
+Hosting:       $ORG
+Running on:    $SERVER
+CMS:           $GEN
+Powered by:    $XPBY
+EOF
+}
+
+if [[ "${1:-}" == "detection" ]]; then
+  shift
+  if [[ -z "${1:-}" ]]; then
+    echo -e "${RED}Usage: sitecheck detection <URL>${NC}"
+    exit 1
+  fi
+  site_info "$1"
+  exit 0
+fi
+
 # 功能：
 #   • ping 测试
 #   • HTTP 状态码
@@ -30,12 +94,10 @@
 
 set -uo pipefail
 
-VERSION="0.1.6"
+VERSION="0.1.7"
 
-# ANSI 颜色
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
 
-# 检查必需命令
 REQUIRED_CMDS=(ping curl bc awk)
 MISSING_REQUIRED=()
 for cmd in "${REQUIRED_CMDS[@]}"; do
@@ -47,13 +109,11 @@ if ((${#MISSING_REQUIRED[@]})); then
   exit 1
 fi
 
-# 提示 httping 可选
 if ! command -v httping &>/dev/null; then
   echo -e "${YELLOW}警告：未安装 httping，将跳过 HTTPS 延迟测试。${NC}"
   echo "如需安装：httping，可执行 'brew install httping'"
 fi
 
-# 默认参数
 COUNT=3
 TIMEOUT=10
 NO_HTTPING=0
@@ -62,7 +122,6 @@ WARN_LATENCY=1000
 FORMAT="plain"
 EXIT_CODE=0
 
-# 解析参数
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help)
@@ -124,14 +183,12 @@ EOF
   esac
 done
 
-# 检查 URL
 if [ -z "${URL:-}" ]; then
   echo "Usage: sitecheck [OPTIONS] <URL>"
   exit 1
 fi
 [[ ! "$URL" =~ ^https?:// ]] && URL="https://$URL"
 
-# 提示参数信息
 echo -e "正在检测: $URL\n  请求次数: $COUNT 次，curl 超时: ${TIMEOUT}s"
 
 HOST=${URL#https://}; HOST=${HOST#http://}; HOST=${HOST%%/*}
