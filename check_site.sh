@@ -1,8 +1,3 @@
-#!/usr/bin/env bash
-# 带详细解释的站点性能检测脚本（含自检功能）
-# 用法: sitecheck [OPTIONS] <URL>
-
-# ===== 自检依赖命令 =====
 REQUIRED_CMDS=(ping curl bc awk)
 OPTIONAL_CMDS=(httping)
 MISSING_REQUIRED=()
@@ -18,13 +13,13 @@ if [ ${#MISSING_REQUIRED[@]} -ne 0 ]; then
   exit 1
 fi
 
-# 检查 httping，可选提示
+# 提示
 if ! command -v httping &>/dev/null; then
   echo "警告：未安装 httping，将跳过 HTTPS 延迟测试。"
   echo "如需安装：httping，可执行 'brew install httping'"
 fi
 
-# ==== 处理帮助/版本/开关选项 ====
+# 帮助/版本/开关选项
 case "$1" in
   -h|--help)
     cat <<'EOF'
@@ -52,21 +47,20 @@ EOF
     ;;
 esac
 
-# ===== 开始性能检测 =====
+# 检测
 URL="$1"
 if [ -z "$URL" ]; then
   echo "Usage: $0 <URL>"
   exit 1
 fi
 
-# 如果没有协议头，则自动加 https://
 if [[ ! "$URL" =~ ^https?:// ]]; then
   URL="https://$URL"
 fi
 
 echo "正在检测: $URL"
 
-# 1) ping 测试
+# ping 测试
 echo -e "\n1) ping 测试"
 HOST=${URL#https://}
 HOST=${HOST#http://}
@@ -100,7 +94,7 @@ else
   echo "   • RTT(min/avg/max/stddev) = ${MIN_RTT}/${AVG_RTT}/${MAX_RTT}/${STDDEV_RTT} ms：${PERF_DESC}。"
 fi
 
-# 2) HTTP 状态码
+# HTTP 状态码
 echo -e "\n2) HTTP 状态码"
 HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" "$URL")
 echo "HTTP Code: $HTTP_CODE"
@@ -113,7 +107,7 @@ case "$HTTP_CODE" in
   *)    echo "   • 未知状态码：请检查 URL 或网络环境。" ;;
 esac
 
-# 3) 响应时间统计
+# 响应时间统计
 echo -e "\n3) 响应时间统计"
 CURL_STATS=$(curl -o /dev/null -s -w "DNS:%{time_namelookup} Connect:%{time_connect} StartTransfer:%{time_starttransfer} Total:%{time_total}" "$URL")
 echo "$CURL_STATS"
@@ -127,7 +121,7 @@ echo "   • TCP+TLS 握手：${CONNECT}s（正常 <0.05s）"
 echo "   • 首字节时间：${START}s（服务器处理+网络，越低越好）"
 echo "   • 总耗时：${TOTAL}s（整体请求延迟）"
 
-# 4) httping 延迟
+# 延迟
 echo -e "\n4) httping 延迟"
 if [ -z "$NO_HTTPING" ] && command -v httping &>/dev/null; then
   echo "→ 使用 httping 跳过 SSL 验证（-k）并测试延迟"
