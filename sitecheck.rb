@@ -2,7 +2,7 @@ class Sitecheck < Formula
   desc "Shell-based site performance checker (ping, HTTP code, timing, httping)"
   homepage "https://github.com/fangbangru/check-site"
   url "https://codeload.github.com/fangbangru/homebrew-sitecheck/tar.gz/refs/tags/v0.1.2"
-  sha256 "e203f3d079ba2dd32b38ee351f1d1191a7571d704278c4521f052e6a03a0468b"
+  sha256 "8e7b5423c0379e74f86e3a9d99379b21352e33cd185aba75596dfe815a824d9e"
   license "MIT"
 
   depends_on "bash"
