@@ -3,7 +3,7 @@ class Sitecheck < Formula
   homepage "https://github.com/fangbangru/homebrew-sitecheck"
   url "https://github.com/fangbangru/homebrew-sitecheck.git",
       branch: "main"
-  version "0.1.9"
+  version "0.2.0"
   license "MIT"
 
   depends_on "bash"

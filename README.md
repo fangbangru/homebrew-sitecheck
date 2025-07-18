@@ -1,6 +1,6 @@
 # sitecheck
 
-[![Version](https://img.shields.io/badge/version-0.1.9-blue.svg)](https://github.com/fangbangru/homebrew-sitecheck/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/fangbangru/homebrew-sitecheck/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Shell](https://img.shields.io/badge/shell-bash-orange.svg)](https://www.gnu.org/software/bash/)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/fangbangru/homebrew-sitecheck)
@@ -160,7 +160,7 @@ round-trip min/avg/max/stddev = 22.761/23.192/23.879/0.491 ms
 
 ## Release and Updates
 
-1. Create new tags and release in the main project repository (e.g., `v0.1.9`)
+1. Create new tags and release in the main project repository (e.g., `v0.2.0`)
 2. Update `sitecheck.rb` in the Homebrew Tap repository, commit and push
 3. Users run `brew update && brew upgrade sitecheck` to get the latest version
 
