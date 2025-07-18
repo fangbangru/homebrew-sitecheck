@@ -7,7 +7,7 @@
 
 A comprehensive site performance monitoring tool with detailed explanations (Shell/Bash)
 
-**sitecheck** is a lightweight command-line tool for quickly testing website connectivity, HTTP status codes, response time breakdown, and HTTPS handshake latency, with easy-to-understand explanations for each metric.
+**sitecheck** is a command-line tool for quickly testing website connectivity, HTTP status codes, response time breakdown, and HTTPS handshake latency.
 
 ## Features
 
