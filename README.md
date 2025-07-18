@@ -10,11 +10,24 @@
 * **HTTP 状态码**：输出 2xx/3xx/4xx/5xx 分类说明。
 * **curl 响应统计**：DNS 解析、TCP+TLS 握手、首字节时间、总耗时，一次调用覆盖全流程。
 * **HTTPS 延迟**（httping，可选）：跳过证书验证测量 HTTPS 握手及首字节延迟。
+* **站点信息探测**：重定向、IP、主机信息、服务器、CMS、SSL 证书等详细信息。
+* **批量检测**：支持从文件读取多个 URL 进行批量检测。
+* **多种输出格式**：plain、JSON、CSV 格式输出。
+* **配置文件支持**：支持 ~/.sitecheck 配置文件自定义默认参数。
+* **参数验证**：严格的参数验证和错误处理。
 * **命令行选项**：
 
   * `-h, --help`：显示帮助信息
   * `-v, --version`：显示当前版本号
   * `--no-httping`：跳过 HTTPS 延迟测试（当不安装 httping 或不想执行时）
+  * `-c, --count <N>`：ping/httping 请求次数（默认 3，范围 1-100）
+  * `-t, --timeout <SEC>`：curl 请求超时时间（秒，默认 10，范围 1-300）
+  * `--warn-loss <PERCENT>`：丢包率告警阈值（%，默认 100）
+  * `--warn-latency <MS>`：平均延迟告警阈值（ms，默认 1000）
+  * `--format <plain|json|csv>`：输出格式（plain 默认）
+  * `--config`：生成示例配置文件到 ~/.sitecheck
+  * `--quiet`：静默模式，只输出结果不显示进度
+  * `--no-color`：禁用彩色输出
 
 ## 安装方式
 
@@ -32,7 +45,7 @@ brew install sitecheck
 ```bash
 git clone https://github.com/fangbangru/check-site.git
 cd check-site
-git checkout v0.1.3       # 切换到指定版本（可选）
+git checkout v0.1.3  
 chmod +x check_site.sh
 ./check_site.sh <URL>
 ```
@@ -57,6 +70,25 @@ sitecheck --version
 
 # 跳过 HTTPS 延迟测试
 sitecheck --no-httping example.com
+
+# 生成配置文件
+sitecheck --config
+
+# 使用 JSON 格式输出
+sitecheck --format json google.com
+
+# 设置告警阈值
+sitecheck --warn-loss 10 --warn-latency 200 example.com
+
+# 批量检测多个站点
+echo -e "google.com\ngithub.com\nstackoverflow.com" > sites.txt
+sitecheck batch sites.txt
+
+# 静默模式 CSV 输出
+sitecheck --quiet --format csv --no-httping example.com
+
+# 站点信息探测
+sitecheck detection example.com
 ```
 
 执行后，会依次输出四大模块：
