@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # sitecheck - Customizable site performance testing script with threshold alerts, colored output, JSON/CSV export
 #           Built-in detection command: site information probe (redirects/IP/host/server/CMS/X-Powered-By)
 #
@@ -82,8 +80,11 @@ EOF
 load_config() {
   local config_file="$HOME/.sitecheck"
   if [[ -f "$config_file" ]]; then
-    echo -e "${GREEN}Loading config file: $config_file${NC}"
+    printf "${GREEN}Loading config file: %s${NC}\n" "$config_file"
 
+    local temp_file=$(mktemp)
+    grep -E '^[A-Z_]+=' "$config_file" | grep -v '^#' > "$temp_file"
+    
     while IFS='=' read -r key value; do
       case "$key" in
         COUNT) COUNT="$value" ;;
@@ -93,7 +94,9 @@ load_config() {
         FORMAT) FORMAT="$value" ;;
         NO_HTTPING) NO_HTTPING="$value" ;;
       esac
-    done < <(grep -E '^[A-Z_]+=' "$config_file" | grep -v '^#')
+    done < "$temp_file"
+    
+    rm -f "$temp_file"
   fi
 }
 
@@ -103,13 +106,13 @@ for cmd in "${REQUIRED_CMDS[@]}"; do
   command -v "$cmd" &>/dev/null || MISSING_REQUIRED+=("$cmd")
 done
 if ((${#MISSING_REQUIRED[@]})); then
-  echo -e "${RED}Error: The following required commands are missing: ${MISSING_REQUIRED[*]}${NC}"
+  printf "${RED}Error: The following required commands are missing: %s${NC}\n" "${MISSING_REQUIRED[*]}"
   echo "Please install them first, e.g.: brew install ${MISSING_REQUIRED[*]}"
   exit 1
 fi
 
 if ! command -v httping &>/dev/null; then
-  echo -e "${YELLOW}Warning: httping not installed, will skip HTTPS latency test.${NC}"
+  printf "${YELLOW}Warning: httping not installed, will skip HTTPS latency test.${NC}\n"
   echo "To install httping, run: 'brew install httping'"
 fi
 
@@ -137,14 +140,14 @@ Commands:
   batch <file>           Batch test multiple sites from file (one URL per line)
 
 Options:
-  -h, --help             Show help information
-  -v, --version          Show version number
-  --no-httping           Skip HTTPS latency test
-  -c, --count <N>        Number of ping/httping requests (default 3)
-  -t, --timeout <SEC>    curl request timeout in seconds (default 10)
-  --warn-loss <PERCENT>  Packet loss warning threshold (%)
-  --warn-latency <MS>    Average latency warning threshold (ms)
-  --format <plain|json|csv> Output format (plain default)
+  -h, --help                 Show help information
+  -v, --version              Show version number
+  --no-httping               Skip HTTPS latency test
+  -c, --count <N>            Number of ping/httping requests (default 3)
+  -t, --timeout <SEC>        curl request timeout in seconds (default 10)
+  --warn-loss <PERCENT>      Packet loss warning threshold (%)
+  --warn-latency <MS>        Average latency warning threshold (ms)
+  --format <plain|json|csv>  Output format (plain default)
   --config                   Generate sample config file to ~/.sitecheck
   --quiet                    Quiet mode, only output results without progress
 
@@ -162,7 +165,7 @@ EOF
     detection)
       shift
       if [[ -z "${1:-}" ]]; then
-        echo -e "${RED}Usage: sitecheck detection <URL>${NC}"
+        printf "${RED}Usage: sitecheck detection <URL>${NC}\n"
         exit 1
       fi
       site_info "$1"
@@ -171,12 +174,12 @@ EOF
     batch)
       shift
       if [[ -z "${1:-}" ]] || [[ ! -f "$1" ]]; then
-        echo -e "${RED}Usage: sitecheck batch <file>${NC}"
-        echo -e "${RED}File not found or not specified${NC}"
+        printf "${RED}Usage: sitecheck batch <file>${NC}\n"
+        printf "${RED}File not found or not specified${NC}\n"
         exit 1
       fi
       
-      echo -e "${GREEN}Batch test mode, file: $1${NC}"
+      printf "${GREEN}Batch test mode, file: %s${NC}\n" "$1"
       if [[ "$FORMAT" == "csv" ]]; then
         printf 'host,loss,avg_rtt,min_rtt,max_rtt,stddev_rtt,http_code,dns,connect,ttfb,total,httping_avg\n'
       fi
@@ -188,7 +191,7 @@ EOF
         if [[ "$FORMAT" == "csv" ]]; then
           QUIET=1 bash "$0" --format csv --no-httping "$url" | tail -n 1
         else
-          echo -e "\n${YELLOW}=== Testing $url ===${NC}"
+          printf "\n${YELLOW}=== Testing $url ===${NC}"
           bash "$0" --no-httping "$url"
         fi
       done < "$1"
@@ -200,7 +203,7 @@ EOF
       if [[ "$2" =~ ^[1-9][0-9]*$ ]] && (( $2 <= 100 )); then
         COUNT="$2"; shift 2
       else
-        echo -e "${RED}Error: Request count must be a positive integer between 1-100${NC}" >&2
+        printf "${RED}Error: Request count must be a positive integer between 1-100${NC}" >&2
         exit 1
       fi
       ;;
@@ -208,7 +211,7 @@ EOF
       if [[ "$2" =~ ^[1-9][0-9]*$ ]] && (( $2 <= 300 )); then
         TIMEOUT="$2"; shift 2
       else
-        echo -e "${RED}Error: Timeout must be a positive integer between 1-300 seconds${NC}" >&2
+        printf "${RED}Error: Timeout must be a positive integer between 1-300 seconds${NC}" >&2
         exit 1
       fi
       ;;
@@ -216,7 +219,7 @@ EOF
       if [[ "$2" =~ ^[0-9]+(\.[0-9]+)?$ ]] && (( $(echo "$2 >= 0 && $2 <= 100" | bc -l) )); then
         WARN_LOSS="$2"; shift 2
       else
-        echo -e "${RED}Error: Packet loss threshold must be a number between 0-100${NC}" >&2
+        printf "${RED}Error: Packet loss threshold must be a number between 0-100${NC}" >&2
         exit 1
       fi
       ;;
@@ -224,7 +227,7 @@ EOF
       if [[ "$2" =~ ^[0-9]+(\.[0-9]+)?$ ]] && (( $(echo "$2 >= 0" | bc -l) )); then
         WARN_LATENCY="$2"; shift 2
       else
-        echo -e "${RED}Error: Latency threshold must be a non-negative number (milliseconds)${NC}" >&2
+        printf "${RED}Error: Latency threshold must be a non-negative number (milliseconds)${NC}" >&2
         exit 1
       fi
       ;;
@@ -233,7 +236,7 @@ EOF
         plain|json|csv)
           FORMAT="$2"; shift 2 ;;
         *)
-          echo -e "${RED}Error: Invalid format '$2'. Supported formats: plain, json, csv${NC}" >&2
+          printf "${RED}Error: Invalid format '$2'. Supported formats: plain, json, csv${NC}" >&2
           exit 1 ;;
       esac
       ;;
@@ -251,7 +254,7 @@ WARN_LATENCY=500
 FORMAT=plain
 # Skip httping test (0|1)
 NO_HTTPING=0" > "$HOME/.sitecheck"
-      echo -e "${GREEN}Config file created: $HOME/.sitecheck${NC}"
+      printf "${GREEN}Config file created: %s${NC}\n" "$HOME/.sitecheck"
       exit 0
       ;;
     --quiet)
@@ -259,7 +262,7 @@ NO_HTTPING=0" > "$HOME/.sitecheck"
     --no-color)
       GREEN=''; YELLOW=''; RED=''; NC=''; shift ;;
     -*)
-      echo -e "${RED}Unknown option: $1${NC}" >&2
+      printf "${RED}Unknown option: $1${NC}" >&2
       exit 1 ;;
     *)
       URL="$1"; shift ;;
@@ -273,20 +276,16 @@ fi
 [[ ! "$URL" =~ ^https?:// ]] && URL="https://$URL"
 
 if [[ $QUIET -eq 0 ]]; then
-  echo -e "Testing: $URL\n  Requests: $COUNT times, curl timeout: ${TIMEOUT}s"
+  printf "Testing: %s\n  Requests: %d times, curl timeout: %ds\n" "$URL" "$COUNT" "$TIMEOUT"
 fi
 
 HOST=${URL#https://}; HOST=${HOST#http://}; HOST=${HOST%%/*}
 
-# ----------------------------------------
-# 1) ping test
 PING_RAW=$(ping -c "$COUNT" "$HOST" 2>&1)
 LOSS=$(echo "$PING_RAW" | awk '/packet loss/ {for(i=1;i<=NF;i++) if($i ~ /%/) {gsub(/%/, "", $i); print $i+0; break}}')
 RTT_LINE=$(echo "$PING_RAW" | awk -F" = " '/min\/avg\/max\/stddev/ {print $2}')
 
-# Process RTT data, set default values when ping fails
 if [[ -n "$RTT_LINE" ]]; then
-  # Clean RTT line, remove trailing " ms"
   RTT_LINE_CLEAN=${RTT_LINE% ms}
   MIN_RTT=$(echo "$RTT_LINE_CLEAN" | cut -d'/' -f1)
   AVG_RTT=$(echo "$RTT_LINE_CLEAN" | cut -d'/' -f2)
@@ -299,7 +298,6 @@ else
   STDDEV_RTT="null"
 fi
 
-# Threshold alerts
 if (( LOSS >= WARN_LOSS )); then LOSS_FLAG="${RED}"; EXIT_CODE=2; else LOSS_FLAG="${GREEN}"; fi
 if [[ "$AVG_RTT" != "null" ]]; then
   AVG_INT=${AVG_RTT%.*}
@@ -308,7 +306,6 @@ else
   LAT_FLAG="${YELLOW}"
 fi
 
-# 2) HTTP status code and response time statistics (merge requests for efficiency)
 CURL_RESULT=$(curl --max-time "$TIMEOUT" -o /dev/null -s \
   -w "%{http_code} %{time_namelookup} %{time_connect} %{time_starttransfer} %{time_total}" \
   "$URL" 2>/dev/null)
@@ -325,11 +322,9 @@ else
   CONNECT="null"
   START="null"
   TOTAL="null"
-  echo -e "${RED}Warning: curl request failed, possibly due to network issues or timeout${NC}" >&2
+  printf "${RED}Warning: curl request failed, possibly due to network issues or timeout${NC}" >&2
 fi
 
-
-# 4) HTTPS latency (httping)
 if (( NO_HTTPING == 0 )) && command -v httping &>/dev/null; then
   HTTPING_RAW=$(httping -G -k -c "$COUNT" "$URL" 2>&1)
   HTTPING_AVG=$(echo "$HTTPING_RAW" \
@@ -340,8 +335,6 @@ else
   HTTPING_AVG="null"
 fi
 
-# ----------------------------------------
-# Output results
 case "$FORMAT" in
   json)
     printf '{'
